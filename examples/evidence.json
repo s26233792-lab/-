@@ -1,0 +1,9 @@
+{
+  "scope": "full self-authored offline example; no external news or real interview",
+  "sources": [{"name": "examples/source.md", "type": "self-authored", "locator": "full document"}],
+  "claims": [
+    {"text": "演示分为收集、处理和输出三个环节。", "kind": "fact", "source": 0, "locator": "paragraph 3"},
+    {"text": "字幕、卡片和文章可以引用同一份资料并分别组织表达。", "kind": "analysis", "locator": "paragraph 4"},
+    {"text": "导出成功不等于内容准确或公众号手机效果已验证。", "kind": "advice", "locator": "paragraph 5"}
+  ]
+}
