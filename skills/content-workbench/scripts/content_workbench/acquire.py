@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .core import atomic_text, digest, file_hash, now, read_json, write_json
+from .core import atomic_text, digest, file_hash, now, read_json, write_json, video_options
 
 
 def run(command, **kwargs):
@@ -205,9 +205,10 @@ def transcribe(workspace, item_id, model_name="small", language="en"):
         directory = workspace.item_dir(item_id)
         video = directory / item["source"]["path"]
         duration = item["source"]["duration"]
-        signature = digest({"media": file_hash(video), "model": model_name, "language": language, "chunk_seconds": 180})
+        word_timestamps = video_options(item)["mode"] == "follow"
+        signature = digest({"media": file_hash(video), "model": model_name, "language": language, "chunk_seconds": 180, "word_timestamps": word_timestamps})
         checkpoint = directory / "source" / f"asr-{signature[:12]}.json"
-        result = read_json(checkpoint) if checkpoint.exists() else {"segments": [], "complete": False, "covered_until": 0, "source_signature": signature, "provider": "local-whisper", "model": model_name, "language": language, "coverage_start": 0, "timing_method": "whisper-word-timestamps"}
+        result = read_json(checkpoint) if checkpoint.exists() else {"segments": [], "complete": False, "covered_until": 0, "source_signature": signature, "provider": "local-whisper", "model": model_name, "language": language, "coverage_start": 0, "timing_method": "whisper-word-timestamps" if word_timestamps else "whisper-segment-timestamps", "word_timestamps": word_timestamps}
         reused_complete = result["complete"]
         if not result["complete"]:
             print(f"Loading local Whisper {model_name}", file=sys.stderr, flush=True)
@@ -217,7 +218,7 @@ def transcribe(workspace, item_id, model_name="small", language="en"):
                 length = min(180, duration - start)
                 print(f"Transcribing {start:.1f}-{start + length:.1f} / {duration:.1f}s", file=sys.stderr, flush=True)
                 pcm = run(["ffmpeg", "-v", "error", "-i", video, "-ss", start, "-t", length, "-vn", "-ac", "1", "-ar", "16000", "-f", "f32le", "-"], capture_output=True).stdout
-                chunk = model.transcribe(np.frombuffer(pcm, dtype=np.float32).copy(), language=None if language == "auto" else language, fp16=False, word_timestamps=True, condition_on_previous_text=False, temperature=0)
+                chunk = model.transcribe(np.frombuffer(pcm, dtype=np.float32).copy(), language=None if language == "auto" else language, fp16=False, word_timestamps=word_timestamps, condition_on_previous_text=False, temperature=0)
                 for segment in chunk["segments"]:
                     entry = {"start": max(0, start + segment["start"]), "end": min(duration, start + segment["end"]), "text": segment["text"].strip(), "words": []}
                     for word in segment.get("words", []):

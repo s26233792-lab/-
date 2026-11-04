@@ -99,6 +99,7 @@ def main():
     run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"testsrc2=size=640x360:rate=25:duration={duration}", "-i", output / "fixture.wav", "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-preset", "fast", "-crf", "22", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-y", media], capture_output=True)
     video_id = cli(workspace, "collect", media, "--title", "演示｜完整双语视频与同步重点词")["item"]["id"]
     cli(workspace, "fetch", video_id)
+    cli(workspace, "video-options", video_id, "--mode", "follow")
     actual = Workspace(workspace).get(video_id)["source"]["duration"]
     transcript = {"provider": "self-authored-fixture", "timing_method": "known synthetic source construction, not ASR", "fixture_mode": fixture_mode, "complete": True, "coverage_start": 0, "covered_until": actual, "segments": [{"start": c["start"], "end": c["end"], "text": c["en"], "words": c["words"]} for c in cues]}
     write_json(output / "transcript.json", transcript)

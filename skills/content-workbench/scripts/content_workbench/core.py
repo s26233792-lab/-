@@ -13,6 +13,11 @@ from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 TARGETS = ("video", "cards", "wechat")
+VIDEO_MODES = {
+    "translation": {"label": "翻译（默认）", "description": "普通中英字幕，顶部不加标题或重点词"},
+    "title": {"label": "顶部标题", "description": "普通中英字幕，成片顶部显示标题"},
+    "follow": {"label": "英语跟读", "description": "英文逐词高亮，顶部显示重点词和中文义"},
+}
 KINDS = {"transcript": ".json", "evidence": ".json", "subtitles": ".json",
          "keywords": ".json", "cards": ".json", "article": ".md", "posts": ".json", "cover": ".json"}
 DEPENDENCIES = {"video": ("transcript", "evidence", "subtitles", "keywords", "posts", "cover"),
@@ -30,6 +35,31 @@ DEFAULT_CONFIG = {"schema_version": 1, "profile": "neutral", "timezone": "UTC",
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def video_options(item):
+    raw = item.get("video_options", {})
+    if not isinstance(raw, dict) or raw.get("mode", "translation") not in VIDEO_MODES:
+        raise ValueError("Video mode must be translation, title or follow")
+    mode = raw.get("mode", "translation")
+    options = {"mode": mode}
+    if mode == "title":
+        title = raw.get("top_title") or item["title"]
+        if not isinstance(title, str) or not title.strip() or title == "待整理素材":
+            raise ValueError("Title mode needs a verified publication title or an explicit top title")
+        options["top_title"] = title.strip()
+    return options
+
+
+def video_selection_recorded(item):
+    raw = item.get("video_options")
+    return isinstance(raw, dict) and raw.get("mode") in VIDEO_MODES
+
+
+def require_video_selection(item):
+    if not video_selection_recorded(item):
+        raise ValueError("Ask the user to choose translation (default), title or follow before production; save the selection with video-options --mode")
+    return video_options(item)
 
 
 def digest(value) -> str:
@@ -197,6 +227,24 @@ class Workspace:
     def material_path(self, item, kind):
         return self.item_dir(item["id"]) / "drafts" / (kind + KINDS[kind])
 
+    def set_video_options(self, item_id, mode=None, top_title=None):
+        with self.lock():
+            item = self.get(item_id)
+            if mode is None and not video_selection_recorded(item):
+                raise ValueError("A video mode must be chosen explicitly before saving options")
+            selected = mode if mode is not None else video_options(item)["mode"]
+            if selected not in VIDEO_MODES:
+                raise ValueError("Video mode must be translation, title or follow")
+            if top_title is not None and (selected != "title" or not isinstance(top_title, str) or not top_title.strip()):
+                raise ValueError("A nonempty top title can only be set in title mode")
+            options = dict(item.get("video_options", {}), mode=selected)
+            if top_title is not None:
+                options["top_title"] = top_title.strip()
+            item["video_options"] = options
+            effective = video_options(item)
+            self.save(item)
+            return effective
+
     def put(self, item_id, kind, source):
         if kind not in KINDS:
             raise ValueError(f"Unknown material kind: {kind}")
@@ -238,7 +286,9 @@ class Workspace:
             if item["source"].get(key):
                 path = directory / item["source"][key]
                 source[key] = file_hash(path) if path.is_file() else "missing"
-        materials = {kind: file_hash(self.material_path(item, kind)) for kind in DEPENDENCIES[target] if self.material_path(item, kind).exists()}
+        options = video_options(item) if target == "video" else None
+        kinds = [kind for kind in DEPENDENCIES[target] if not (target == "video" and kind == "keywords" and options["mode"] != "follow")]
+        materials = {kind: file_hash(self.material_path(item, kind)) for kind in kinds if self.material_path(item, kind).exists()}
         used_assets = set()
         cover_data = self.material(item, "cover", required=False)
         if cover_data and cover_data.get("asset"):
@@ -262,7 +312,7 @@ class Workspace:
                     "wechat": ("wechat_style", "cover_accent", "font")}
         config = self.config()
         return digest({"engine": engine, "target": target, "title": item["title"], "summary": item.get("summary", "") if target == "wechat" else "", "source": source,
-                       "materials": materials, "assets": assets, "config": {key: config[key] for key in settings[target]},
+                       "materials": materials, "assets": assets, "video_options": options, "config": {key: config[key] for key in settings[target]},
                        "font": file_hash(font) if font.is_file() else "missing"})
 
     def source_signature(self, item):
@@ -375,6 +425,8 @@ class Workspace:
                 if file_hash(out) != record["sha256"]:
                     raise ValueError("Export copy failed checksum verification")
             metadata = {"title": item["title"], "output_title": item["title"], "target": target, "created_at": now(), "source": item["canonical"] if item["platform"] != "local" else item["source"].get("original_name", "local file"), "review": item["reviews"][target], "files": [{"name": str(p.relative_to(folder)), "sha256": file_hash(p)} for p in sorted(folder.rglob("*")) if p.is_file()]}
+            if target == "video":
+                metadata["video_options"] = video_options(item)
             write_json(folder / "package.json", metadata)
             item["exports"].append({"target": target, "path": str(folder), "signature": build["signature"], "exported_at": now()})
             self.save(item)

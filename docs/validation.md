@@ -26,3 +26,13 @@ python -m unittest discover -s tests -v
 ```
 
 On POSIX, prefix the test command with `CWB_TEST_FONT_DIR=/path/to/workspace/fonts` instead. Font installation is explicit via `cwb --workspace ./workspace fonts install`.
+
+## v0.1.1 video modes
+
+New checks cover the distinction between a recommended default and a submitted user choice, refusal to produce an unselected video, persisted mode changes, independent top-title text, and video-only invalidation. Sentence-timed subtitles are sufficient for translation/title, while follow mode requires actual word times and keyword entries. An isolated adapter test verifies that only follow requests Whisper word alignment and that translation/title reuse the same segment-timing checkpoint; it does not claim model accuracy.
+
+Opt-in media checks additionally render title mode without word data and follow mode with a real timed highlight/keyword schedule. They inspect generated ASS events as well as actual encoded frame count, source audio, duration and full decoding.
+
+Local v0.1.1 regression: all 36 checks passed on Windows/Python 3.14, including eight opt-in media checks and seven new mode/adapter checks. A mocked Whisper adapter is used only to test selection of segment/word timestamps and cache reuse; actual model recognition quality is outside that check.
+
+The three modes were also rendered from the same explicitly clipped self-authored speech fixture and visually inspected: plain translation has an empty top area and fixed English color; title mode has an actual two-line top title; follow mode has a keyword/gloss and active-word color. All three preserved 3.96 seconds, 99 decoded frames and identical decoded audio relative to that fixture. This short fixture is for mode validation and is not a processing-duration limit.

@@ -10,7 +10,7 @@ from fractions import Fraction
 from pathlib import Path
 
 from .acquire import probe, run
-from .core import atomic_text, file_hash, write_json
+from .core import atomic_text, file_hash, write_json, video_options, require_video_selection
 from .fonts import make_static
 from .graphics import cover, wrapped
 
@@ -41,7 +41,7 @@ def normalized(text):
     return "".join(ch.casefold() for ch in text if ch.isalnum())
 
 
-def validate_subtitles(data, transcript, duration):
+def validate_subtitles(data, transcript, duration, *, require_words=False):
     if transcript.get("complete") is not True or seconds(transcript.get("coverage_start", 0)) > 0.01 or seconds(transcript.get("covered_until", -1)) < duration - 0.15:
         raise ValueError("The full source must be transcribed before a complete video can be produced")
     cues = data.get("cues", [])
@@ -55,6 +55,8 @@ def validate_subtitles(data, transcript, duration):
         last_end = b
         if not isinstance(cue.get("en"), str) or not isinstance(cue.get("zh"), str) or not cue["en"].strip() or not cue["zh"].strip():
             raise ValueError(f"Cue {index} requires nonempty English and Chinese")
+        if not require_words:
+            continue
         words = cue.get("words", [])
         if not words:
             raise ValueError("Word highlighting requires actual word timestamps; sentence durations must not be evenly divided")
@@ -102,7 +104,10 @@ def fit_box(stream):
 
 def write_ass(workspace, item, destination, cues, keywords):
     from PIL import ImageFont
-    text = " ".join(c["zh"] + " " + c["en"] for c in cues) + " ".join(k.get("word", "") + k.get("meaning", "") for k in keywords) + workspace.config()["brand"] + "重点词汇"
+    options = video_options(item)
+    mode = options["mode"]
+    keywords = keywords if mode == "follow" else []
+    text = " ".join(c["zh"] + " " + c["en"] for c in cues) + " ".join(k.get("word", "") + k.get("meaning", "") for k in keywords) + workspace.config()["brand"] + "重点词汇" + options.get("top_title", "")
     family_zh = make_static(workspace, destination / "fonts" / "CWB650.ttf", text, 650)
     family_en = make_static(workspace, destination / "fonts" / "CWB700.ttf", text, 700)
     font_en = ImageFont.truetype(str(destination / "fonts" / "CWB700.ttf"), 44)
@@ -124,6 +129,7 @@ Style: Keyword,{family_en},132,{active},{active},&H00000000,&H00000000,0,0,0,0,1
 Style: Meaning,{family_en},46,&H00F4F4F4,&H00F4F4F4,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,8,60,60,0,1
 Style: Label,{family_en},28,&H00C3BDB8,&H00C3BDB8,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,8,60,60,0,1
 Style: Brand,{family_en},58,&H00F4F4F4,&H00F4F4F4,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,9,60,60,0,1
+Style: Title,{family_en},76,&H00F4F4F4,&H00F4F4F4,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,8,64,64,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -136,6 +142,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     for index, cue in enumerate(cues, 1):
         wrapped(cue["zh"], font_zh, 952, 1)
         event(cue["start"], cue["end"], "Chinese", r"{\pos(540,1080)}" + ass_text(cue["zh"]))
+        srt.append(f"{index}\n{srt_time(cue['start'])} --> {srt_time(cue['end'])}\n{cue['zh']}\n")
+        if mode != "follow":
+            lines = wrapped(cue["en"], font_en, 928, 2)
+            if len(lines) == 2:
+                two_line_cues.append(index)
+            event(cue["start"], cue["end"], "English", r"{\pos(540,1252)}" + ass_text("\n".join(lines)))
+            continue
         word_lines, current, width = [], [], 0
         for word_index, word in enumerate(cue["words"]):
             text_width = font_en.getlength(word["word"])
@@ -163,7 +176,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for line in word_lines:
                 lines.append(" ".join(r"{\c" + (active if i == active_word else gray) + "}" + ass_text(cue["words"][i]["word"]) for i in line))
             event(a, b, "English", r"{\pos(540,1252)}" + r"\N".join(lines))
-        srt.append(f"{index}\n{srt_time(cue['start'])} --> {srt_time(cue['end'])}\n{cue['zh']}\n")
+    title_lines = []
+    if mode == "title":
+        title_font = ImageFont.truetype(str(destination / "fonts" / "CWB700.ttf"), 76)
+        title_lines = wrapped(options["top_title"], title_font, 952, 3)
+        for index, line in enumerate(title_lines):
+            event(0, item["source"]["duration"], "Title", r"{\pos(540," + str(136 + index * 92) + ")}" + ass_text(line))
     previous = 0
     for keyword in keywords:
         a, b = seconds(keyword.get("start")), seconds(keyword.get("end"))
@@ -191,7 +209,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         event(0, item["source"]["duration"], "Brand", r"{\pos(1020,32)}" + ass_text(workspace.config()["brand"]))
     atomic_text(destination / "subtitles.ass", header + "\n".join(events) + "\n")
     atomic_text(destination / "subtitles.srt", "\n".join(srt))
-    return {"cue_count": len(cues), "word_count": sum(len(c["words"]) for c in cues), "two_line_cues": two_line_cues, "keyword_count": len(keywords)}
+    return {"cue_count": len(cues), "word_count": sum(len(c["words"]) for c in cues) if mode == "follow" else 0, "word_highlighting": mode == "follow", "two_line_cues": two_line_cues, "keyword_count": len(keywords), "title_lines": title_lines}
 
 
 def pcm_hash(path):
@@ -241,6 +259,7 @@ def verify_video(source, output):
 
 
 def render_video(workspace, item, destination):
+    options = require_video_selection(item)
     if not shutil.which("ffmpeg"):
         raise ValueError("FFmpeg is required for video composition")
     if item["source"].get("kind") != "video":
@@ -251,9 +270,11 @@ def render_video(workspace, item, destination):
     source_start = float(media["format"].get("start_time", 0))
     if abs(source_start) > 0.1:
         raise ValueError("This source has a nonzero timeline origin. Normalize the source explicitly and re-check transcript timings before rendering")
-    cues = validate_subtitles(workspace.material(item, "subtitles"), workspace.material(item, "transcript"), item["source"]["duration"])
-    keyword_data = workspace.material(item, "keywords", required=False)
+    cues = validate_subtitles(workspace.material(item, "subtitles"), workspace.material(item, "transcript"), item["source"]["duration"], require_words=options["mode"] == "follow")
+    keyword_data = workspace.material(item, "keywords", required=options["mode"] == "follow") if options["mode"] == "follow" else None
     keyword_list = keyword_data.get("entries", []) if keyword_data else []
+    if options["mode"] == "follow" and not keyword_list:
+        raise ValueError("English follow mode needs source-backed keyword entries for the top area")
     typography = write_ass(workspace, item, destination, cues, keyword_list)
     box = fit_box(stream)
     filters = f"scale={box['width']}:{box['height']}:flags=lanczos,setsar=1,pad=1080:1440:{box['x']}:{box['y']}:color=black,ass=subtitles.ass:fontsdir=fonts"
@@ -269,15 +290,18 @@ def render_video(workspace, item, destination):
     if not selected_fonts or any("CWBSans-" not in line for line in selected_fonts):
         raise ValueError("libass selected a font outside the verified renamed subset; inspect render.log")
     checks = verify_video(source, destination / "video.mp4")
-    checks.update(typography=typography, video_box=box, font_selection_verified=True, cover=cover(workspace, item, destination / "cover.png"))
+    checks.update(video_options=options, typography=typography, video_box=box, font_selection_verified=True, cover=cover(workspace, item, destination / "cover.png"))
     thumbnail = item["source"].get("thumbnail")
     if thumbnail:
         original = workspace.item_dir(item["id"]) / thumbnail
         shutil.copy2(original, destination / ("original-cover" + original.suffix.lower()))
     # Representative frames are extracted from the actual encoded file, including two-line English when present.
     times = {min(0.2, item["source"]["duration"]/2), max(0, item["source"]["duration"]-0.2), (max(cues, key=lambda c: len(c["en"]))["start"] + max(cues, key=lambda c: len(c["en"]))["end"])/2}
-    first_word = cues[0]["words"][0]
-    times.add((first_word["start"]+first_word["end"])/2)
+    if options["mode"] == "follow":
+        first_word = cues[0]["words"][0]
+        times.add((first_word["start"]+first_word["end"])/2)
+    else:
+        times.add((cues[0]["start"]+cues[0]["end"])/2)
     previews = destination / "previews"
     previews.mkdir()
     for index, moment in enumerate(sorted(times), 1):

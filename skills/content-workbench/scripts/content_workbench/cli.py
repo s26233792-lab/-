@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .core import DEFAULT_CONFIG, KINDS, REQUIRED_CHECKS, TARGETS, Workspace, now, read_json, write_json
+from .core import DEFAULT_CONFIG, KINDS, REQUIRED_CHECKS, TARGETS, VIDEO_MODES, Workspace, now, read_json, write_json, video_options, video_selection_recorded
 
 
 def doctor(workspace):
@@ -80,6 +80,10 @@ def parser():
     q.add_argument("id")
     q.add_argument("--model", default="small")
     q.add_argument("--language", default="en")
+    q = commands.add_parser("video-options", help="Read available video modes or save the user's selection; default is translation")
+    q.add_argument("id")
+    q.add_argument("--mode", choices=tuple(VIDEO_MODES))
+    q.add_argument("--top-title", help="Title text for title mode; otherwise the final publication title is used")
     q = commands.add_parser("put", help="Import checked draft material; keeps revision history")
     q.add_argument("id")
     q.add_argument("kind", choices=tuple(KINDS))
@@ -139,12 +143,15 @@ def execute(args, workspace):
         if cmd == "show":
             return {"item": item, "directory": str(workspace.item_dir(args.id)), "status": workspace.status(item)}
         requirements = {"video": ["transcript", "evidence", "subtitles"], "cards": ["evidence", "cards"], "wechat": ["evidence", "article"]}
+        options = video_options(item)
+        if options["mode"] == "follow":
+            requirements["video"].append("keywords")
         gate = None
         try:
             workspace.require_policy(item)
         except ValueError as error:
             gate = str(error)
-        return {"id": args.id, "source_acquired": bool(item["source"].get("fetched_at")), "policy_pause": gate, "status": workspace.status(item), "last_errors": item.get("last_errors", {}),
+        return {"id": args.id, "source_acquired": bool(item["source"].get("fetched_at")), "policy_pause": gate, "status": workspace.status(item), "last_errors": item.get("last_errors", {}), "video_options": options, "video_selection_recorded": video_selection_recorded(item),
                 "missing_materials": {target: [kind for kind in kinds if not workspace.material_path(item, kind).exists()] for target, kinds in requirements.items()},
                 "review_checks": REQUIRED_CHECKS, "note": "Resume the requested target only; missing material for other targets is not a request to create it."}
     if cmd in ("hold", "metadata", "config"):
@@ -189,6 +196,11 @@ def execute(args, workspace):
     if cmd == "transcribe":
         from .acquire import transcribe
         return transcribe(workspace, args.id, args.model, args.language)
+    if cmd == "video-options":
+        if args.mode is not None or args.top_title is not None:
+            workspace.set_video_options(args.id, args.mode, args.top_title)
+        item = workspace.get(args.id)
+        return {"id": args.id, "options": video_options(item), "selection_recorded": video_selection_recorded(item), "choices": [{"mode": key, **value} for key, value in VIDEO_MODES.items()]}
     if cmd == "put":
         # Full YouTube preflight precedes translation, keywords and publishing copy in the personal profile.
         if args.kind != "transcript":

@@ -28,7 +28,7 @@ class MediaIntegrationTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
-    def compose(self, shape, filters=None, rotate=False, audio=True):
+    def compose(self, shape, filters=None, rotate=False, audio=True, mode="translation", words=True):
         media = self.root / "fixture.mp4"
         args = ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"testsrc2=size={shape}:rate=10:duration=1.2"]
         if audio:
@@ -48,8 +48,16 @@ class MediaIntegrationTests(unittest.TestCase):
         write_json(transcript, {"complete": True, "coverage_start": 0, "covered_until": item["source"]["duration"], "segments": [{"text": "One."}], "provider": "synthetic-test-schedule, not speech"})
         self.workspace.put(item["id"], "transcript", transcript)
         subtitles = self.root / "subtitles.json"
-        write_json(subtitles, {"cues": [{"start": 0.1, "end": 1.0, "en": "One.", "zh": "一", "words": [{"word": "One.", "start": 0.15, "end": 0.6}]}]})
+        cue = {"start": 0.1, "end": 1.0, "en": "One.", "zh": "一"}
+        if words:
+            cue["words"] = [{"word": "One.", "start": 0.15, "end": 0.6}]
+        write_json(subtitles, {"cues": [cue]})
         self.workspace.put(item["id"], "subtitles", subtitles)
+        self.workspace.set_video_options(item["id"], mode, "测试顶部标题" if mode == "title" else None)
+        if mode == "follow":
+            keywords = self.root / "keywords.json"
+            write_json(keywords, {"entries": [{"start": 0.1, "end": 1.0, "word": "One", "meaning": "一"}]})
+            self.workspace.put(item["id"], "keywords", keywords)
         destination = self.root / "output"
         destination.mkdir()
         checks = render_video(self.workspace, self.workspace.get(item["id"]), destination)
@@ -57,6 +65,12 @@ class MediaIntegrationTests(unittest.TestCase):
         self.assertEqual(checks["decoded_frames_in"], checks["decoded_frames_out"])
         self.assertTrue(checks["font_selection_verified"])
         self.assertEqual(checks["audio_pcm_equal"], True if audio else None)
+        self.assertEqual(checks["video_options"]["mode"], mode)
+        events = [line for line in (destination / "subtitles.ass").read_text(encoding="utf-8").splitlines() if line.startswith("Dialogue:")]
+        english = [line for line in events if ",English," in line]
+        self.assertEqual(any(r"\c" in line for line in english), mode == "follow")
+        self.assertEqual(any(",Keyword," in line for line in events), mode == "follow")
+        self.assertEqual(any(",Title," in line for line in events), mode == "title")
         return checks
 
     def test_portrait_is_complete_and_centered(self):
@@ -78,7 +92,17 @@ class MediaIntegrationTests(unittest.TestCase):
         self.assertLess(checks["decoded_frames_in"], 12)
 
     def test_silent_source_does_not_gain_audio(self):
-        self.compose("640x360", audio=False)
+        self.compose("640x360", audio=False, words=False)
+
+    def test_top_title_uses_plain_subtitles_without_word_times(self):
+        checks = self.compose("640x360", mode="title", words=False)
+        self.assertEqual(checks["typography"]["title_lines"], ["测试顶部标题"])
+        self.assertFalse(checks["typography"]["word_highlighting"])
+
+    def test_follow_displays_timed_keywords_and_active_word(self):
+        checks = self.compose("640x360", mode="follow")
+        self.assertTrue(checks["typography"]["word_highlighting"])
+        self.assertEqual(checks["typography"]["keyword_count"], 1)
 
     def test_unsupported_character_is_reported_without_font_fallback(self):
         with self.assertRaisesRegex(ValueError, "U\\+10FFFF"):

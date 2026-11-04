@@ -206,16 +206,16 @@ class ContentTests(unittest.TestCase):
     def test_subtitles_reject_missing_words_overlap_partial_or_omitted_content(self):
         transcript = {"complete": True, "coverage_start": 0, "covered_until": 2, "segments": [{"text": "Hello world."}]}
         valid = {"cues": [{"start": 0, "end": 2, "en": "Hello world.", "zh": "你好世界", "words": [{"word": "Hello", "start": 0.1, "end": 0.7}, {"word": "world.", "start": 0.9, "end": 1.5}]}]}
-        self.assertEqual(len(validate_subtitles(valid, transcript, 2)), 1)
+        self.assertEqual(len(validate_subtitles(valid, transcript, 2, require_words=True)), 1)
         import copy
         missing = copy.deepcopy(valid)
         missing["cues"][0]["words"] = []
         with self.assertRaises(ValueError):
-            validate_subtitles(missing, transcript, 2)
+            validate_subtitles(missing, transcript, 2, require_words=True)
         overlapping = copy.deepcopy(valid)
         overlapping["cues"][0]["words"][1]["start"] = 0.5
         with self.assertRaises(ValueError):
-            validate_subtitles(overlapping, transcript, 2)
+            validate_subtitles(overlapping, transcript, 2, require_words=True)
         with self.assertRaises(ValueError):
             validate_subtitles(valid, {**transcript, "covered_until": 1}, 2)
         with self.assertRaises(ValueError):

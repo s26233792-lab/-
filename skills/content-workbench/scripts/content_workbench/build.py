@@ -1,7 +1,7 @@
 """Build dispatch and shared source/copy records."""
 from __future__ import annotations
 
-from .core import TARGETS, atomic_text, write_json, now
+from .core import TARGETS, atomic_text, write_json, now, require_video_selection
 
 
 def validate_evidence(evidence):
@@ -40,6 +40,8 @@ def build(workspace, item_id, target):
     with workspace.lock():
         item = workspace.get(item_id)
         workspace.require_policy(item)
+        if target == "video":
+            require_video_selection(item)
         signature = workspace.signature(item, target)
         prior = item["builds"].get(target)
         if prior and prior["signature"] == signature and workspace.build_intact(item, target):

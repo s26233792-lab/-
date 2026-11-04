@@ -27,20 +27,30 @@ def public_files():
     return sorted(selected)
 
 
+def release_version():
+    module = ROOT / "skills/content-workbench/scripts/content_workbench/__init__.py"
+    version = re.search(r'__version__\s*=\s*"([0-9A-Za-z.+-]+)"', module.read_text(encoding="utf-8"))[1]
+    project = re.search(r'^version\s*=\s*"([0-9A-Za-z.+-]+)"', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.MULTILINE)[1]
+    if version != project:
+        raise ValueError("Package and project versions differ")
+    return version
+
+
 def main():
+    version = release_version()
     directory = ROOT / "dist"
     directory.mkdir(exist_ok=True)
-    target = directory / "content-workbench-v0.1.0.zip"
+    target = directory / f"content-workbench-v{version}.zip"
     if target.exists():
         suffix = 2
-        while (directory / f"content-workbench-v0.1.0-{suffix}.zip").exists():
+        while (directory / f"content-workbench-v{version}-{suffix}.zip").exists():
             suffix += 1
-        target = directory / f"content-workbench-v0.1.0-{suffix}.zip"
+        target = directory / f"content-workbench-v{version}-{suffix}.zip"
     files = public_files()
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in files:
             archive.write(path, "content-workbench/" + path.relative_to(ROOT).as_posix())
-        archive.writestr("content-workbench/release-manifest.json", json.dumps({"version": "0.1.0", "files": [{"path": p.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}, ensure_ascii=False, indent=2))
+        archive.writestr("content-workbench/release-manifest.json", json.dumps({"version": version, "files": [{"path": p.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}, ensure_ascii=False, indent=2))
     print(json.dumps({"archive": str(target), "bytes": target.stat().st_size, "files": len(files), "sha256": hashlib.sha256(target.read_bytes()).hexdigest()}, indent=2))
 
 

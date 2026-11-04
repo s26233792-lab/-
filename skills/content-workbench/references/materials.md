@@ -15,6 +15,7 @@ cwb --workspace DIR show ID
 cwb --workspace DIR next ID
 cwb --workspace DIR fetch ID [--kind auto|video|article]
 cwb --workspace DIR transcribe ID [--model small] [--language en|auto]
+cwb --workspace DIR video-options ID [--mode translation|title|follow] [--top-title TEXT]
 cwb --workspace DIR metadata ID [--title TEXT] [--speaker TEXT] [--program TEXT] [--video-type TEXT] [--summary TEXT]
 cwb --workspace DIR put ID KIND FILE
 cwb --workspace DIR asset ID IMAGE --name NAME
@@ -27,6 +28,12 @@ cwb --workspace DIR config KEY VALUE
 ```
 
 `config` 只接受已知的非凭证字段。布尔值使用 `true` / `false`。`batch` 有部分失败时返回非零退出状态，同时保留成功记录。所有命令输出 JSON，进度或错误发到标准错误流；命令失败不能宣称已交付。
+
+## 视频模式选择
+
+`video-options ID` 是只读查询：返回翻译（默认推荐）、顶部标题、英语跟读三项，以及 `selection_recorded`。默认推荐不会自动写成用户选择。用户选定后用 `--mode translation|title|follow` 记录；未记录时，视频制作会停止。已有模式只在用户明确改选时切换，不能因为旧词条还在就自动开启跟读。
+
+标题模式的 `--top-title` 是成片上方的实际标题，未给时沿用最终发布标题；它不改成片文件名。英语跟读要求真实词时间和非空的关键词条；普通翻译与顶部标题只需句子时间。
 
 ## 材料
 
@@ -63,7 +70,7 @@ cwb --workspace DIR config KEY VALUE
 ]}]}
 ```
 
-词序与转录对应；词时间不能重叠或超出 cue。真实停顿保留，不均分句长。脚本会比较英文实质词与转录覆盖范围，但不能自动证明转录正确或翻译忠实。
+所有模式都要求 `start/end/en/zh`，并比较英文实质词与全文转录。翻译/顶部标题模式可省略 `words`；上面的词数据只在英语跟读模式必需。跟读的词序要与原文对应，词时间不能重叠或超出 cue，真实停顿保留，不均分句长。结构通过不证明翻译正确。
 
 ### evidence.json
 
@@ -86,7 +93,7 @@ cwb --workspace DIR config KEY VALUE
 {"entries": [{"start": 0, "end": 2.0, "word": "source", "meaning": "原始资料"}]}
 ```
 
-每次一个词或短语；必须真实出现在对应原文区间，不重叠。不提供此材料时不显示顶部词条。
+只有英语跟读模式需要非空的 entries，每次一个词/短语，真实出现在对应原文区间，不重叠。翻译与顶部标题模式不会使用此文件，即使素材中已有旧词条。
 
 ### cover.json
 
