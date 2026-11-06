@@ -16,7 +16,7 @@ description: 内容工作台：收集链接、视频和文章到本地素材箱�
    - 收集与资料获取：[collection.md](references/collection.md)。
    - 来源核验、写作与跨平台适配：[editorial.md](references/editorial.md)。
    - 短视频的翻译、顶部标题或英语跟读选择：[video.md](references/video.md)。
-   - 封面与 3:4 图文卡片：[cards.md](references/cards.md)。
+   - 封面与 3:4 图文卡片：[cards.md](references/cards.md)，先按[风格库](references/card-styles.md)让用户选择。
    - 公众号文章或已有稿排版：[wechat.md](references/wechat.md)。
    - 字段与命令：[materials.md](references/materials.md)。
 
@@ -46,6 +46,8 @@ description: 内容工作台：收集链接、视频和文章到本地素材箱�
 ## 制作、审校与交付
 
 准备并 `put` 本次需要的材料，`build ID TARGET` 生成。三类目标是 `video`、`cards`、`wechat`。不要因为其他目标材料为空就自动制作它们。
+
+卡片所选风格若超出本地基础模板，按[风格库](references/card-styles.md)使用宿主实际可用的视觉能力交付，并明确实际保存位置；独立制作的图片不冒充已登记的工具构建或导出。缺少所需能力时说明缺口，不能擅自换风格。
 
 `build` 检查的是尺寸、文字是否放得下、文件、媒体流等机械属性。查看实际 MP4 代表帧、每张图片或 HTML，回到源材料核对事实、归属和译文。真实检查后用 `review` 记录检查者与具体说明，不自动全部填“通过”；助手可登记自己实际完成的检查，不要求用户逐步批准。公众号后台粘贴/手机预览未经账号实测就保持未验证。
 
