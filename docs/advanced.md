@@ -4,7 +4,7 @@
 
 这是一个安装到 AI 助手中的 **Skill + 本地工具包**。助手负责理解素材、研究、翻译和写作；工具负责收集、版本记录、确定性排版、媒体合成、检查和导出。v0.1 先支持 Codex；不包含在线账户系统或自动发布。
 
-[下载 v0.1.1 安装包](https://github.com/s26233792-lab/-/releases/tag/v0.1.1) · [使用示例](#在助手中使用) · [验证范围](validation.md)
+[下载最新安装包](https://github.com/s26233792-lab/-/releases/latest) · [使用示例](#在助手中使用) · [验证范围](validation.md)
 
 ```text
 链接 / 本地视频 / 文章

@@ -36,3 +36,11 @@ Opt-in media checks additionally render title mode without word data and follow 
 Local v0.1.1 regression: all 36 checks passed on Windows/Python 3.14, including eight opt-in media checks and seven new mode/adapter checks. A mocked Whisper adapter is used only to test selection of segment/word timestamps and cache reuse; actual model recognition quality is outside that check.
 
 The three modes were also rendered from the same explicitly clipped self-authored speech fixture and visually inspected: plain translation has an empty top area and fixed English color; title mode has an actual two-line top title; follow mode has a keyword/gloss and active-word color. All three preserved 3.96 seconds, 99 decoded frames and identical decoded audio relative to that fixture. This short fixture is for mode validation and is not a processing-duration limit.
+
+## v0.1.2 skill and package synchronization
+
+The release includes the updated skill entry point, user-selected card-style instructions, seven newly composed simulated previews, the illustrated usage guide and style overview. Source, archive manifest and a fresh isolated skill installation are compared for file integrity; this checks the distributed skill itself rather than only the README. Documentation link checks and actual GitHub image loading were also checked.
+
+The style library is an instruction and reference library for the host assistant. The local card renderer still provides its documented dark base template; the seven previews do not imply seven automatic renderer themes. Other styles require the host's actual illustration, typography and image-export capabilities.
+
+No media-rendering logic changes in this release. The regular suite covers 28 tests; eight opt-in media tests remain conditional on FFmpeg and a verified font. Earlier media results above remain versioned evidence, not a new media run for v0.1.2.
