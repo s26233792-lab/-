@@ -4,9 +4,9 @@
 
 [下载安装包](https://github.com/s26233792-lab/-/releases/latest) · [详细安装](docs/advanced.md) · [成品示例](docs/advanced.md#离线输出示例)
 
-![使用流程：发素材，选形式，收成品](docs/images/how-to-use.png)
+![内容工作台使用图解：让助手安装，发素材，选输出，收成品；附可直接使用的示例说法](docs/images/skill-usage.png)
 
-**发素材 → 选形式 → 收成品**
+**安装一次 → 发素材 → 选输出 → 收成品**
 
 ## 第一次使用
 
@@ -45,7 +45,9 @@ https://github.com/s26233792-lab/-
 
 ### 做卡片时，你来选风格
 
-[查看 7 种风格和历史样张 →](docs/card-styles.md)
+[查看 7 种风格和模拟样张 →](docs/card-styles.md)
+
+[![七种卡片风格模拟样张对照，用户可以直接报编号选择](docs/images/card-styles-overview.png)](docs/card-styles.md)
 
 **黑底电蓝 · 暖白拼贴 · 小知漫画 · 黑底橙色 · 白底极简 · 白底淡彩语录 · 推文阅读**
 
