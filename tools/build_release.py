@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FILES = ("README.md", "LICENSE", "pyproject.toml", "THIRD_PARTY_NOTICES.md", "CONTRIBUTING.md", ".gitignore", ".gitattributes")
 DIRECTORIES = ("skills", "docs", "examples", "tools", "tests", ".github")
+ARCHIVE_ROOT = "dongning-media-skill"
 
 
 def public_files():
@@ -40,17 +41,17 @@ def main():
     version = release_version()
     directory = ROOT / "dist"
     directory.mkdir(exist_ok=True)
-    target = directory / f"content-workbench-v{version}.zip"
+    target = directory / f"{ARCHIVE_ROOT}-v{version}.zip"
     if target.exists():
         suffix = 2
-        while (directory / f"content-workbench-v{version}-{suffix}.zip").exists():
+        while (directory / f"{ARCHIVE_ROOT}-v{version}-{suffix}.zip").exists():
             suffix += 1
-        target = directory / f"content-workbench-v{version}-{suffix}.zip"
+        target = directory / f"{ARCHIVE_ROOT}-v{version}-{suffix}.zip"
     files = public_files()
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in files:
-            archive.write(path, "content-workbench/" + path.relative_to(ROOT).as_posix())
-        archive.writestr("content-workbench/release-manifest.json", json.dumps({"version": version, "files": [{"path": p.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}, ensure_ascii=False, indent=2))
+            archive.write(path, ARCHIVE_ROOT + "/" + path.relative_to(ROOT).as_posix())
+        archive.writestr(ARCHIVE_ROOT + "/release-manifest.json", json.dumps({"version": version, "files": [{"path": p.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}, ensure_ascii=False, indent=2))
     print(json.dumps({"archive": str(target), "bytes": target.stat().st_size, "files": len(files), "sha256": hashlib.sha256(target.read_bytes()).hexdigest()}, indent=2))
 
 

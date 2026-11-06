@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "content-workbench"
-version = "0.1.2"
-description = "An agent skill and local toolkit for collecting sources and producing Chinese video, cards and WeChat article packages."
+version = "0.1.3"
+description = "Dongning Media Skill: collect sources and produce bilingual videos, image cards and WeChat articles with an AI assistant."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

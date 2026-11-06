@@ -42,7 +42,7 @@ def doctor(workspace):
 
 
 def parser():
-    p = argparse.ArgumentParser(description="Content Workbench — collect, process and export with an AI host")
+    p = argparse.ArgumentParser(description="冻柠自媒体 Skill — collect sources and produce videos, image cards and WeChat articles")
     p.add_argument("--workspace", default=os.environ.get("CWB_WORKSPACE", str(Path.home() / ".content-workbench")))
     p.add_argument("--version", action="version", version=__version__)
     commands = p.add_subparsers(dest="command", required=True)

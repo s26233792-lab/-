@@ -1,4 +1,4 @@
 interface:
-  display_name: "内容工作台"
-  short_description: "把链接、视频和文章收进素材箱，按需输出双语视频、图文卡片与公众号发布包"
-  default_prompt: "用 $content-workbench 收集这份素材，并按我的要求制作发布成品。"
+  display_name: "冻柠自媒体 Skill"
+  short_description: "收集链接、视频和文章，制作字幕视频、图文卡片与公众号文章，支持改稿和素材复用"
+  default_prompt: "用 $content-workbench 处理这份素材，先确认我要做视频、卡片还是公众号文章，再按所选形式制作。"

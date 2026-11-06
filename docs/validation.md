@@ -44,3 +44,9 @@ The release includes the updated skill entry point, user-selected card-style ins
 The style library is an instruction and reference library for the host assistant. The local card renderer still provides its documented dark base template; the seven previews do not imply seven automatic renderer themes. Other styles require the host's actual illustration, typography and image-export capabilities.
 
 No media-rendering logic changes in this release. The regular suite covers 28 tests; eight opt-in media tests remain conditional on FFmpeg and a verified font. Earlier media results above remain versioned evidence, not a new media run for v0.1.2.
+
+## v0.1.3 display name and distribution
+
+The public name is now 冻柠自媒体 Skill (Dongning Media Skill). The skill description, Codex display metadata, usage examples and image labels use that name and explain collection, editing and the three output formats. The technical skill ID `content-workbench`, Python module, `cwb` command and existing workspace locations remain compatible.
+
+Source archives now use the `dongning-media-skill-vVERSION.zip` filename and `dongning-media-skill/` top-level directory. Archive file hashes, extracted skill references, display metadata and launcher behavior are checked from an isolated installation. Card and usage-guide images were typeset again from their existing editable layouts; the original image-generation prompts remain recorded verbatim.
