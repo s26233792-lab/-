@@ -159,8 +159,10 @@ python tools/build_release.py
 
 ## 离线输出示例
 
-下面的视频为用户明确选择“英语跟读”时的示例，普通翻译不会显示顶部词条或逐词高亮。彩条属于自制测试源画面，不是真实人物素材；公众号图是本地手机宽度预览。
+视频效果使用自制模拟素材，分别经过翻译、顶部标题和英语跟读模式实际导出后截帧。查看[三种视频效果大图](video-examples.md)。公众号图是本地手机宽度预览。
 
-<img src="images/video-frame.png" alt="双语视频与同步重点词" width="240"> <img src="images/wechat-mobile.png" alt="公众号本地手机宽度预览" width="240">
+[![三种视频模式的实际成片截图对照](images/video-modes.png)](video-examples.md)
+
+<img src="images/wechat-mobile.png" alt="公众号本地手机宽度预览" width="240">
 
 ![三张卡片示例](images/cards-overview.png)
